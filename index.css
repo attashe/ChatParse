@@ -1,0 +1,65 @@
+body {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100vw;
+}
+.user-box {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: flex-end;
+    height: 100%;
+    width: 100%;
+}
+#login {
+    margin-right: 40px;
+}
+.user-name {
+    display: inline;
+    color: gray;
+}
+.header {
+    background-color: darkblue;
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 10vh;
+    width: 100vw;
+    z-index: 1;
+}
+.left-menu {
+    display: none;
+    position: fixed;
+    background-color: aliceblue;
+    top: 10vh;
+    left: 0;
+    height: 90vh;
+    width: 15vw;
+}
+main {
+    position: relative;
+    top: 10vh;
+    margin: 0 auto;
+    width: 70%;
+    background-color: navajowhite;
+    padding: 20px 40px 10px;
+}
+.voice-box {
+    float: left;
+}
+.pdf-box {
+    float: right;
+    margin-left: 5%;
+}
+.content-container {
+    display: flex;
+}
+.content-container::after{
+    display: block;
+    height: 0;
+    content: "";
+}
+.chat-box {
+    background-color: aquamarine;
+}

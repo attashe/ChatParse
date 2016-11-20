@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Chat</title>
+    <script
+            src="https://code.jquery.com/jquery-3.1.0.min.js"
+            integrity="sha256-cCueBR6CsyA4/9szpPfrX3s49M9vUU5BgtiJj06wt/s="
+            crossorigin="anonymous"></script>
+
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/vis/4.16.1/vis.min.css" rel="stylesheet" type="text/css" />
+
+    <link rel="stylesheet" type="text/css" href="http://app.englishpatient.org/assets/css/semantic.min.css">
+
+    <!-- Library for work with files -->
+    <script src="http://momentjs.com/downloads/moment.min.js"></script>
+
+    <!-- Library for work with Parse -->
+    <!--<script src="https://www.parsecdn.com/js/parse-1.6.14.min.js"></script>-->
+
+    <!--Library for work with Parse Server-->
+    <script src="https://npmcdn.com/parse@1.9.2/dist/parse.min.js"></script>
+
+    <link rel="stylesheet" type="text/css" media="all" href="styles.css">
+    <script src="https://webasr.yandex.net/jsapi/v1/webspeechkit.js" type="text/javascript"></script>
+    <script src="https://webasr.yandex.net/jsapi/v1/webspeechkit-settings.js" type="text/javascript"></script>
+    <!--  <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/0.4.1/html2canvas.js"></script>
+  <script type="text/javascript" src="https://raw.githubusercontent.com/juancgarcia/screenshotify/master/Downloadify-652377f/js/jquery.plugin.html2canvas.js.original"></script> -->
+    <script src="streamer.js" type="text/javascript"></script>
+
+    <link rel="stylesheet" href="index.css"/>
+</head>
+<body>
+    <div class="header">
+        <div class="user-box">
+            <label>Логин</label>
+            <input type="text" id="userField">
+            <label>Пароль</label>
+            <input type="password" id="passField">
+            <button id="auth">Регистрация</button>
+            <button id="login">Авторизация</button>
+        </div>
+    </div>
+    <div class="left-menu"></div>
+    <main class="ten wide column">
+        <div class="content-container">
+        <div class="voice-box">
+            <script type="text/javascript" src="pdf.js"></script>
+            <input type="button" name="start" id="rec_start" value="Начать диктовку записи">
+            <input type="button" name="pause" id="rec_pause" disabled value="Приостановить диктовку">
+            <input type="button" name="stop" id="rec_stop" disabled value="Остановить диктовку">
+
+            <div class="textarea">
+                <form action="#">
+                    <textarea id="text_field" rows="10" cols="55"></textarea>
+                </form>
+            </div>
+        </div>
+        <div class="pdf-box">
+            <div id="target">
+                <div>
+                    <button id="prev"style=" width: 70px;">Previous</button>
+                    <button id="next" style=" width: 70px;">Next</button>
+                    <span>Page: <input id="page_num" value=1 size=2 style="text-align: right; font-size: 14px"/> / <span id="page_count"></span></span>
+                </div>
+
+
+                <canvas id="the-canvas">
+                </canvas>
+            </div>
+        </div>
+        </div>
+        <div class="chat-box">
+            <input type="text" id="messageText">
+            <button id="sendMessage">Send!</button>
+            <div class="chat" id="chatBox"></div>
+        </div>
+
+    </main>
+    <div class="three wide column">
+        <div style="display:inline-block;margin: 0 auto">
+            <div class="ui buttons center">
+                <button class="ui button" id="auth-button" style="height: 55%">Login</button>
+                <div class="or" data-text="or"></div>
+                <button class="ui positive button" id="reg-button" style="height: 55%">Sign in</button>
+            </div>
+        </div>
+        <div id="reg" class="newEventPlaceholder ui form ui stacked segment" style="display: none">
+            <h3 class="ui center aligned header">Регистрация</h3>
+            <div class="field" >
+                <input placeholder="Адрес эл.почты" />
+            </div>
+            <div class="field" >
+                <input placeholder="Логин" />
+            </div>
+            <div class="field" >
+                <input placeholder="Пароль" />
+            </div>
+            <button class="ui primary button" style="display: block; margin: 0 auto;">Auth</button>
+        </div>
+        <div id="author" class="newEventPlaceholder ui form ui stacked segment" style="display: none">
+            <h3 class="ui center aligned header">Authorization</h3>
+            <div class="field" >
+                <input placeholder="Логин" />
+            </div>
+            <div class="field" >
+                <input placeholder="Пароль" />
+            </div>
+            <button class="ui primary button" style="display: block; margin: 0 auto;">Login</button>
+        </div>
+    </div>
+    <script>
+        var url = "http://www.tutorialspoint.com/html/html_tutorial.pdf" ;
+        var pdfDoc = null,
+                pageNum = 1,
+                pageRendering = false,
+                pageNumPending = null,
+                scale = 0.8,
+                canvas = document.getElementById('the-canvas'),
+                ctx = canvas.getContext('2d');
+
+        /**
+         * Get page info from document, resize canvas accordingly, and render page.
+         * @param num Page number.
+         */
+        function renderPage(num) {
+            pageRendering = true;
+            // Using promise to fetch the page
+            pdfDoc.getPage(num).then(function(page) {
+                var viewport = page.getViewport(scale);
+                canvas.height = viewport.height;
+                canvas.width = viewport.width;
+
+                // Render PDF page into canvas context
+                var renderContext = {
+                    canvasContext: ctx,
+                    viewport: viewport
+                };
+                var renderTask = page.render(renderContext);
+
+                // Wait for rendering to finish
+                renderTask.promise.then(function () {
+                    pageRendering = false;
+                    if (pageNumPending !== null) {
+                        // New page rendering is pending
+                        renderPage(pageNumPending);
+                        pageNumPending = null;
+                    }
+                });
+            });
+
+            // Update page counters
+            document.getElementById('page_num').value = pageNum;
+        }
+
+        /**
+         * If another page rendering in progress, waits until the rendering is
+         * finised. Otherwise, executes rendering immediately.
+         */
+        function queueRenderPage(num) {
+            if (pageRendering) {
+                pageNumPending = num;
+            } else {
+                renderPage(num);
+            }
+        }
+
+        /**
+         * Converts to img
+         */
+
+        function page2img() {
+            return;
+        }
+        /**
+         * Displays required page
+         */
+        function kdp(e) {
+            if(e.keyCode === 13) {
+                // do whatever you want with the value
+                var pageNum_tmp = pageNum;
+                pageNum=parseInt(document.getElementById('page_num').value,10);
+                if (pageNum<1 || pageNum >pdfDoc.numPages) {
+                    pageNum = pageNum_tmp;
+                    return;
+                }
+                queueRenderPage(pageNum);
+            }
+        }
+        document.getElementById('page_num').addEventListener('keydown', kdp);
+
+        /**
+         * Displays previous page.
+         */
+        function onPrevPage() {
+            if (pageNum <= 1) {
+                return;
+            }
+            pageNum--;
+            queueRenderPage(pageNum);
+        }
+        document.getElementById('prev').addEventListener('click', onPrevPage);
+
+        /**
+         * Displays next page.
+         */
+        function onNextPage() {
+            if (pageNum >= pdfDoc.numPages) {
+                return;
+            }
+            pageNum++;
+            queueRenderPage(pageNum);
+        }
+        document.getElementById('next').addEventListener('click', onNextPage);
+        function arrowKey(code){
+            if (code == 37) {
+                onPrevPage();
+                return false;
+            }
+            if (code == 38) {
+                onPrevPage();
+                return false;
+            }
+            if (code == 39) {
+                onNextPage();
+                return false;
+            }
+            if (code == 40) {
+                onNextPage();
+                return false;
+            }
+        };
+        $(document).keydown(function(event){arrowKey(event.keyCode);});
+
+
+
+
+        /**
+         * Asynchronously downloads PDF.
+         */
+        PDFJS.getDocument(url).then(function (pdfDoc_) {
+            pdfDoc = pdfDoc_;
+            document.getElementById('page_count').textContent = pdfDoc.numPages;
+
+
+            renderPage(pageNum);
+        });
+    </script>
+<script type="text/javascript">
+$(document).ready(function () {
+    function initParse(){
+        Parse.initialize("zZUvULRC96RcuKT6vwKMOJFrrRlmv11PIEKO8rtb", "30c0FCe5xLMu6Q62isVH1iSfMi0P9rJJq6fQRSRx");
+    }
+    function loadAllEvents(callback){
+        var q = new Parse.Query('Chat');
+        q.addDescending('createdAt');
+        q.limit(1000);
+        q.find({
+            success: function (results) {
+                callback(results);
+            },
+            error: function (error) {
+                alert("Events load error");
+            }
+        })
+    }
+    function getEventItemHtml(event){
+        img = '';
+        if(event.get('picture') != undefined) {
+            console.log(event.get('picture').url());
+            img = event.get('picture').url();
+        }
+//            var s = '<div class="eventItem ui message " ><span class="ui label" >' + moment(event.createdAt).format('LLL') + '</span><span class="namePlaceholder" >' + event.get('name') +'<span class="descriptionPlaceholder" > - <span>' + event.get('description') + '</span> <a class="ui button mini basic" href="event.html?id=' + event.id + '" >посмотреть</a></div>';
+//        var s = '<div class="flex-container"><article class="event"><header>' + event.get('title') + '</header>' + '<div class="event-wrap"><p>' + event.get('textNews') + '</p><img src="' + img + '"></div></article></div>';
+        s = `<div class="message">
+
+                <p>
+                    <p class="user-name">${event.get('author') + '\t'}</p>
+                    ${event.get('message')}
+                </p>
+                <img src="${img}">
+            </div>`;
+        return s;
+    }
+    function drawEvents(events){
+        var s = '';
+        for (var i in events){
+            var e = events[i];
+            s+= getEventItemHtml(e);
+        }
+        $('#chatBox').html(s);
+    }
+
+    function createMessage(message, username, callback){
+        var Chat = Parse.Object.extend('Chat');
+        var p = new Chat();
+        p.set('message', message);
+        p.set('author', username);
+        p.save().then(function(savedPhoto){
+            callback(savedPhoto);
+        });
+    }
+
+    function sendHandler() {
+        createMessage(messageText.value, username, function () {
+            chatBox.value = "";
+            messageText.value = "";
+            loadAllEvents(function(events){
+                drawEvents(events);
+            });
+        });
+        //window.location.reload();
+    }
+
+    function initLocalParse() {
+        Parse.initialize("attashe");
+        Parse.serverURL = 'http://localhost:1337/parse'
+    }
+
+    function authorization() {
+        Parse.User.logIn(userField.value, passField.value, {
+            success: function(user) {
+                // Do stuff after successful login.
+                alert("Do stuff after successful login.");
+            },
+            error: function(user, error) {
+                // The login failed. Check error to see why.
+                alert("The login failed. Check error to see why.");
+            }
+        });
+    }
+
+    function registration() {
+        var user = new Parse.User();
+        user.set("username", userField.value);
+        user.set("password", passField.value);
+        //user.set("email", "email@example.com");
+
+// other fields can be set just like with Parse.Object
+        //user.set("phone", "415-392-0202");
+
+        user.signUp(null, {
+            success: function (user) {
+                // Hooray! Let them use the app now.
+                alert("Hooray! Let them use the app now.");
+            },
+            error: function (user, error) {
+                // Show the error message somewhere and let the user try again.
+                alert("Error: " + error.code + " " + error.message);
+            }
+        });
+    }
+    initParse();
+    //initLocalParse();
+    loadAllEvents(function(events){
+        drawEvents(events);
+    });
+    
+    //Main code started this
+    var username = "Anonymus";
+
+    var currentUser = Parse.User.current();
+    if (currentUser) {
+        // do stuff with the user
+    } else {
+        // show the signup or login page
+    }
+
+    auth.addEventListener('click', registration);
+    login.addEventListener('click', authorization);
+
+    sendMessage.addEventListener('click', sendHandler);
+
+
+    setInterval(function () {
+        loadAllEvents(function(events){
+            drawEvents(events);
+        });
+    }, 1000);
+
+    /*let queryChat = new Parse.Query('Chat');
+    let subscription = queryChat.subscribe();
+    subscription.on('update', (object) => {
+        console.log('object updated');
+        console.log(object);
+    });*/
+
+    $('#reg-button').click( function(e) {
+        if ($('#author').css('display') !== 'none') {
+            $('#author').toggle(400);
+        }
+        $('#reg').toggle(400);
+    });
+    $('#auth-button').click( function(e) {
+        if ($('#reg').css('display') !== 'none') {
+            $('#reg').toggle(400);
+        }
+        $('#author').toggle(400);
+    });
+})
+</script>
+</body>
+</html>
